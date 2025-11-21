@@ -13,7 +13,7 @@ s3 = boto3.client(
     "s3",
     region_name=AWS_REGION,
     aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY
+    aws_secret_access_key=AWS_SECRET_KEY,
 )
 
 bucket_name = "adaptive-risk-twin-data"

@@ -16,11 +16,12 @@ s3 = boto3.client(
     "s3",
     region_name=AWS_REGION,
     aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY
+    aws_secret_access_key=AWS_SECRET_KEY,
 )
 
 BUCKET = "adaptive-risk-twin-data"
-KEY = "raw/PS_20174392719_1491204439457_log.csv"   # PaySim file
+KEY = "raw/PS_20174392719_1491204439457_log.csv"  # PaySim file
+
 
 def load_paysim():
     print("Downloading PaySim from S3...")
@@ -35,7 +36,7 @@ def load_paysim():
     output_path = "data/processed/paysim.csv"
     df.to_csv(output_path, index=False)
     print(f"Saved to {output_path}")
-    
+
     return df
 
 

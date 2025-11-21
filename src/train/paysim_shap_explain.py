@@ -51,8 +51,7 @@ os.makedirs("reports/shap", exist_ok=True)
 
 print("Creating SHAP explainer...")
 explainer = shap.TreeExplainer(
-    model, 
-    feature_perturbation="tree_path_dependent"  # FAST mode
+    model, feature_perturbation="tree_path_dependent"  # FAST mode
 )
 
 print("Calculating SHAP values...")

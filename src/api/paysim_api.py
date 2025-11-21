@@ -27,9 +27,13 @@ app = FastAPI(
 # 2. Load model + feature schema at startup
 # ---------------------------------------------------
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # go up from src/api/
+BASE_DIR = os.path.dirname(
+    os.path.dirname(os.path.dirname(__file__))
+)  # go up from src/api/
 MODEL_PATH = os.path.join(BASE_DIR, "models", "lgbm_fraud.txt")
-SCHEMA_PATH = os.path.join(BASE_DIR, "data", "processed", "paysim_cleaned_core_features.csv")
+SCHEMA_PATH = os.path.join(
+    BASE_DIR, "data", "processed", "paysim_cleaned_core_features.csv"
+)
 
 print(f"Loading model from: {MODEL_PATH}")
 model = lgb.Booster(model_file=MODEL_PATH)
@@ -41,6 +45,7 @@ ALL_COLUMNS = [c for c in schema_df.columns if c != "isFraud"]  # features only
 # ---------------------------------------------------
 # 3. Pydantic request/response models
 # ---------------------------------------------------
+
 
 class TransactionInput(BaseModel):
     amount: float = Field(..., example=50000)
@@ -62,6 +67,7 @@ class FraudPrediction(BaseModel):
 # ---------------------------------------------------
 # 4. Helper: build model-ready dataframe from raw input
 # ---------------------------------------------------
+
 
 def build_feature_row(tx: TransactionInput) -> pd.DataFrame:
     """
@@ -90,14 +96,11 @@ def build_feature_row(tx: TransactionInput) -> pd.DataFrame:
     df["balance_jump_ratio_dest"] = df["balance_jump_dest"] / (df["oldbalanceDest"] + 1)
 
     df["zero_to_zero_dest"] = (
-        (df["oldbalanceDest"] == 0)
-        & (df["newbalanceDest"] == 0)
-        & (df["amount"] > 0)
+        (df["oldbalanceDest"] == 0) & (df["newbalanceDest"] == 0) & (df["amount"] > 0)
     ).astype(int)
 
     df["unchanged_orig_balance"] = (
-        (df["oldbalanceOrg"] == df["newbalanceOrig"])
-        & (df["amount"] > 0)
+        (df["oldbalanceOrg"] == df["newbalanceOrig"]) & (df["amount"] > 0)
     ).astype(int)
 
     # 4.3 one-hot encode type
@@ -122,6 +125,7 @@ def build_feature_row(tx: TransactionInput) -> pd.DataFrame:
 # ---------------------------------------------------
 # 5. Endpoints
 # ---------------------------------------------------
+
 
 @app.get("/health")
 def health_check():
@@ -154,12 +158,15 @@ def predict_fraud(tx: TransactionInput):
         message=msg,
     )
 
+
 from typing import Optional
+
 
 class SimulationInput(BaseModel):
     transaction: TransactionInput
     amount_shock_percent: Optional[float] = Field(0, example=20)
     force_type: Optional[str] = Field(None, example="CASH_OUT")
+
 
 @app.post("/simulate", response_model=dict)
 def simulate_risk(sim: SimulationInput):
@@ -194,5 +201,5 @@ def simulate_risk(sim: SimulationInput):
     return {
         "baseline_fraud_probability": baseline_prob,
         "simulated_fraud_probability": simulated_prob,
-        "delta": delta
+        "delta": delta,
     }

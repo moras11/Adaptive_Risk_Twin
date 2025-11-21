@@ -74,11 +74,7 @@ joblib.dump(scaler, "models/scaler.pkl")
 # 6. Logistic Regression (Baseline)
 # -------------------------------------------------------
 
-log_reg = LogisticRegression(
-    class_weight="balanced",
-    max_iter=2000,
-    n_jobs=-1
-)
+log_reg = LogisticRegression(class_weight="balanced", max_iter=2000, n_jobs=-1)
 
 log_reg.fit(X_train_scaled, y_train_res)
 y_pred_lr = log_reg.predict(X_test_scaled)
@@ -99,12 +95,12 @@ lgb_train = lgb.Dataset(X_train_res, label=y_train_res)
 lgb_eval = lgb.Dataset(X_test, label=y_test)
 
 params = {
-    'objective': 'binary',
-    'metric': 'auc',
-    'is_unbalance': True,   # imbalance handling
-    'learning_rate': 0.05,
-    'num_leaves': 31,
-    'feature_fraction': 0.7,
+    "objective": "binary",
+    "metric": "auc",
+    "is_unbalance": True,  # imbalance handling
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "feature_fraction": 0.7,
 }
 
 lgb_model = lgb.train(
@@ -136,7 +132,7 @@ xgb_model = XGBClassifier(
     n_estimators=200,
     subsample=0.8,
     colsample_bytree=0.8,
-    n_jobs=-1
+    n_jobs=-1,
 )
 
 xgb_model.fit(X_train, y_train)

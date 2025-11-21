@@ -26,17 +26,19 @@ df = pd.read_csv(INPUT_PATH)
 
 raw_features = [
     "amount",
-    "oldbalanceOrg", "newbalanceOrig",
-    "oldbalanceDest", "newbalanceDest",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "newbalanceDest",
     "step",
-    "type"   # will be one-hot encoded
+    "type",  # will be one-hot encoded
 ]
 
 engineered_features = [
     "balance_drop_ratio_orig",
     "balance_jump_ratio_dest",
     "zero_to_zero_dest",
-    "unchanged_orig_balance"
+    "unchanged_orig_balance",
 ]
 
 target = ["isFraud"]
