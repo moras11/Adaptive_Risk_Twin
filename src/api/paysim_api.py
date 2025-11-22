@@ -30,14 +30,15 @@ app = FastAPI(
 
 # Detect CI mode (GitHub Actions)
 CI_MODE = os.getenv("CI", "false").lower() == "true"
-#CI_MODE = True
-    #skip model loading
-    #skip CSV loading
-    #tests run without errors
-    #CI passes
+# CI_MODE = True
+# skip model loading
+# skip CSV loading
+# tests run without errors
+# CI passes
 
 model = None
 ALL_COLUMNS = None
+
 
 def load_dependencies():
     global model, ALL_COLUMNS
@@ -60,7 +61,7 @@ def load_dependencies():
             "type_CASH_OUT",
             "jump_ratio",
             "origin_balance_diff",
-            "dest_balance_diff"
+            "dest_balance_diff",
         ]
         model = None
         return
@@ -237,6 +238,7 @@ def simulate_risk(sim: SimulationInput):
         "simulated_fraud_probability": simulated_prob,
         "delta": delta,
     }
+
 
 # Load real model/schema only during API runtime, not during CI
 if not CI_MODE:
