@@ -240,6 +240,5 @@ def simulate_risk(sim: SimulationInput):
     }
 
 
-# Load real model/schema only during API runtime, not during CI
-if not CI_MODE:
-    load_dependencies()
+# Load dependencies ALWAYS, but behavior differs in CI_MODE
+load_dependencies()
