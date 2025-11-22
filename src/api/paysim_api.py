@@ -13,6 +13,7 @@ import numpy as np
 import lightgbm as lgb
 import os
 
+
 # ---------------------------------------------------
 # 1. FastAPI app
 # ---------------------------------------------------
@@ -27,20 +28,53 @@ app = FastAPI(
 # 2. Load model + feature schema at startup
 # ---------------------------------------------------
 
-BASE_DIR = os.path.dirname(
-    os.path.dirname(os.path.dirname(__file__))
-)  # go up from src/api/
-MODEL_PATH = os.path.join(BASE_DIR, "models", "lgbm_fraud.txt")
-SCHEMA_PATH = os.path.join(
-    BASE_DIR, "data", "processed", "paysim_cleaned_core_features.csv"
-)
+# Detect CI mode (GitHub Actions)
+CI_MODE = os.getenv("CI", "false").lower() == "true"
+#CI_MODE = True
+    #skip model loading
+    #skip CSV loading
+    #tests run without errors
+    #CI passes
 
-print(f"Loading model from: {MODEL_PATH}")
-model = lgb.Booster(model_file=MODEL_PATH)
+model = None
+ALL_COLUMNS = None
 
-print(f"Loading feature schema from: {SCHEMA_PATH}")
-schema_df = pd.read_csv(SCHEMA_PATH, nrows=5)  # just to get columns
-ALL_COLUMNS = [c for c in schema_df.columns if c != "isFraud"]  # features only
+def load_dependencies():
+    global model, ALL_COLUMNS
+
+    # -----------------------------------------------------
+    #  CI MODE → Do NOT load model or CSV (files not present)
+    # -----------------------------------------------------
+    if CI_MODE:
+        print("CI mode enabled — skipping model & schema loading.")
+
+        # Minimal mock feature set so tests don't break
+        ALL_COLUMNS = [
+            "amount",
+            "oldbalanceOrg",
+            "newbalanceOrig",
+            "oldbalanceDest",
+            "newbalanceDest",
+            "step",
+            "type_TRANSFER",
+            "type_CASH_OUT",
+            "jump_ratio",
+            "origin_balance_diff",
+            "dest_balance_diff"
+        ]
+        model = None
+        return
+
+    # -----------------------------------------------------
+    #  NORMAL MODE → Load real model & schema
+    # -----------------------------------------------------
+    print(f"Loading model from: {MODEL_PATH}")
+    model = lgb.Booster(model_file=MODEL_PATH)
+
+    print(f"Loading feature schema from: {SCHEMA_PATH}")
+    schema_df = pd.read_csv(SCHEMA_PATH)
+    ALL_COLUMNS = [c for c in schema_df.columns if c != "isFraud"]
+
 
 # ---------------------------------------------------
 # 3. Pydantic request/response models
@@ -203,3 +237,7 @@ def simulate_risk(sim: SimulationInput):
         "simulated_fraud_probability": simulated_prob,
         "delta": delta,
     }
+
+# Load real model/schema only during API runtime, not during CI
+if not CI_MODE:
+    load_dependencies()

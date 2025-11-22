@@ -32,5 +32,6 @@ jobs:
     - name: Run tests
       env:
         PYTHONPATH: ${{ github.workspace }}
+	CI: "true"
       run: |
         pytest -q
