@@ -183,11 +183,6 @@ def predict_fraud(tx: TransactionInput):
         # Normal mode: use real model
         prob = float(model.predict(X)[0])
 
-    X = build_feature_row(tx)
-
-    # LightGBM was trained on raw (unscaled) features
-    prob = float(model.predict(X)[0])
-
     threshold = 0.5  # you can tune this later
     is_fraud = prob >= threshold
 
