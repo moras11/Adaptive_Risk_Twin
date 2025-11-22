@@ -3,6 +3,10 @@
 # ===========================================
 FROM python:3.10-slim
 
+# Install LightGBM runtime dependency
+RUN apt-get update && apt-get install -y libgomp1
+
+
 # -------------------------------------------
 # 2. Set working directory inside container
 # -------------------------------------------
