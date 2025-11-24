@@ -1,50 +1,45 @@
-Adaptive Risk Twin – Fraud Detection MVP (Phase 1)
+# Adaptive Risk Twin – Fraud Detection MVP (Phase 1)
 
-Real-time fraud scoring · What-if simulation engine · Explainable ML · CI/CD · Containerized API · Dashboard-ready
+Real-time fraud scoring • What-if simulation engine • Explainable ML • CI/CD • Containerized API • Dashboard-ready
 
-This project is the first phase of a larger Adaptive Risk Twin — an intelligent digital twin that simulates financial risks across anomalies, credit, liquidity and fraud.
+This project is the first phase of a larger Adaptive Risk Twin — an intelligent digital twin designed to simulate and analyze financial risks across fraud, credit, liquidity, and operational domains.  
 Phase 1 focuses on building a production-ready Fraud Detection & Simulation System.
 
-Project Highlights (Business Impact First)
-Business Impact
+---
 
-Detects high-risk transactions in real time → reduces potential fraud losses
+## Project Highlights
 
-Runs simulations (e.g., increased transaction amount, changed transaction type) → helps teams understand extreme-case scenarios
+### Business Impact
+- Detects high-risk transactions in real time, reducing potential fraud losses.
+- Runs controlled what-if simulations (e.g., increased amount, altered transaction type) to understand risk sensitivity and extreme-case scenarios.
+- Provides model explainability for audit readiness, compliance, and governance.
+- Automated CI/CD ensures reliability and fast deployment.
 
-Provides explainability (SHAP) → improves trust, audit readiness, and governance
+### Technical Highlights
+- S3-based data ingestion  
+- EDA → Feature Engineering → LightGBM Model  
+- SHAP explainability  
+- FastAPI microservice for real-time inference  
+- What-if simulation engine  
+- Dockerized application  
+- GitHub Actions CI pipeline  
+- Streamlit dashboard (Phase 1.5)
 
-Automated CI/CD → increases reliability and speeds up deployment
+---
 
-Technical Highlights
+## Quick Visual Preview
 
-S3-based data ingestion
+These will be filled after generating screenshots:
 
-EDA → Feature Engineering → LightGBM Model
+- API response preview  
+- SHAP feature importance preview  
+- Simulation preview  
 
-SHAP Explainability
+---
 
-FastAPI microservice
+## System Architecture (Phase 1)
 
-What-if Simulation Engine
-
-Dockerized API
-
-GitHub CI/CD (tests + formatting)
-
-Streamlit dashboard (coming in Phase 1.5)
-
-Quick Visual Preview of the System
-
-(Insert images later — placeholders included)
-
-1. API + Model Serving Screenshot (placeholder)
-[API Screenshot Placeholder]
-
-2. SHAP Explainability Screenshot (placeholder)
-[SHAP Screenshot Placeholder]
-
-Architecture — Fraud Module MVP
+```mermaid
 flowchart TD
 
     subgraph Training[Training Layer - Model Development]
@@ -78,79 +73,62 @@ flowchart TD
 
     D --> F
     E --> I
+```
 
-Features
-1. Feature Engineering
+---
 
-Balance drop features
+## Features
 
-Balance jump features
+### 1. Feature Engineering
+- Balance drop features  
+- Balance jump features  
+- Ratio-based fraud signatures  
+- Zero-to-zero destination handling  
+- Unchanged balance indicator  
+- Transaction type one-hot encoding  
+- Schema alignment to ensure API consistency  
 
-Ratio-based fraud signatures
+### 2. Model – LightGBM
+- Trained on engineered PaySim dataset  
+- Handles extreme class imbalance  
+- Fast inference suitable for real-time systems  
+- High ROC-AUC  
 
-Zero-to-zero destination handling
+### 3. Explainability – SHAP
+- Global feature importance  
+- Local explanations for individual predictions  
+- Supports governance and model transparency  
 
-Unchanged balance indicator
+### 4. FastAPI Microservice
+Endpoints:
 
-Transaction type one-hot encoding
-
-Schema alignment to ensure API consistency
-
-2. Model – LightGBM
-
-Trained on engineered PaySim dataset
-
-Handles heavy class imbalance
-
-Extremely fast inference
-
-High ROC-AUC
-
-3. Explainability – SHAP
-
-Global feature importance
-
-Per-transaction local explanations
-
-Helps compliance teams understand fraud risk
-
-4. FastAPI Microservice
-
-Endpoints included:
-
+```
 POST /predict_fraud
-GET  /health
 POST /simulate
+GET  /health
+```
 
-5. Simulation Engine (What-if Analysis)
+### 5. What-if Simulation Engine
+- Adjust transaction amount (percentage shock)
+- Override transaction type
+- Compare baseline vs simulated fraud risk
+- Understand sensitivity and model behavior
 
-Apply amount shock (e.g., +20%)
+### 6. Dockerized Deployment
+- Reproducible environment  
+- Easy to deploy on any cloud or Kubernetes  
 
-Force transaction type change
+### 7. CI/CD Pipeline
+- Black formatting enforcement  
+- Unit tests for feature engineering and API  
+- Pull request quality checks  
+- Automated build and test workflow  
 
-View change in fraud probability
+---
 
-Identify high-risk scenarios without real exposure
+## Project Structure
 
-6. Docker Containerization
-
-Reproducible environment
-
-No dependency issues
-
-Deployable on any cloud
-
-7. CI/CD – GitHub Actions
-
-Installs dependencies
-
-Runs Black formatter
-
-Executes unit tests
-
-Ensures code quality before merging
-
-📁 Project Structure
+```
 Adaptive_Risk_Twin/
 │
 ├── src/
@@ -158,7 +136,8 @@ Adaptive_Risk_Twin/
 │   │   └── paysim_api.py
 │   ├── train/
 │   │   └── paysim_train_fraud_model.py
-│   └── dashboard/   ← Streamlit app (Phase 1.5)
+│   └── dashboard/
+│       └── app.py   (Phase 1.5)
 │
 ├── data/
 │   └── processed/
@@ -175,76 +154,95 @@ Adaptive_Risk_Twin/
 ├── requirements.txt
 ├── README.md
 └── progress_log.md
+```
 
-How to Run Locally
-1. Create venv
+---
+
+## How to Run Locally
+
+### 1. Create virtual environment
+
+```
 python -m venv .venv
 .venv/Scripts/activate   # Windows
+```
 
-2. Install requirements
+### 2. Install dependencies
+
+```
 pip install -r requirements.txt
+```
 
-3. Run API
+### 3. Run the API
+
+```
 uvicorn src.api.paysim_api:app --reload
+```
 
-4. Run dashboard (Phase 1.5)
+### 4. Run the Streamlit Dashboard (Phase 1.5)
+
+```
 streamlit run src/dashboard/app.py
+```
 
-Run in Docker
+---
 
-Build image:
+## Running with Docker
 
+### Build image
+```
 docker build -t risk-twin-api .
+```
 
-
-Run container:
-
+### Run container
+```
 docker run -p 8000:8000 risk-twin-api
+```
 
-CI/CD
+---
 
-GitHub Actions workflow automatically:
+## CI/CD
 
-Installs Python
+The GitHub Actions workflow performs:
 
-Installs dependencies
+- Dependency installation  
+- Black formatting validation  
+- Unit tests  
+- API import checks  
+- Automatic failure on formatting or test errors  
 
-Runs Black formatting
+This ensures safe, reliable, production-friendly commits.
 
-Runs unit tests
+---
 
-Rejects merge if anything breaks
+## Roadmap
 
-Status badges can be added after first green build.
+### Phase 1 (Fraud MVP)
+- EDA  
+- Feature Engineering  
+- LightGBM Model  
+- SHAP Explainability  
+- FastAPI  
+- Simulation Engine  
+- Docker  
+- Unit Tests  
+- CI Pipeline  
+- Streamlit Dashboard (in progress)
 
-Roadmap (Phase 1 → Phase 2)
-Phase 1 (MVP – Fraud Module)
+### Phase 2 (Full Adaptive Risk Twin)
+- Add Credit Risk Model  
+- Add Liquidity Forecasting Model  
+- Add Operational Risk Rules  
+- Multi-Agent Coordination Layer  
+- Risk Knowledge Graph  
+- Real-time Streaming (Kafka)  
+- Enterprise Dashboard (Plotly/Streamlit Pro)
 
-✔ EDA
-✔ Feature Engineering
-✔ LightGBM
-✔ SHAP
-✔ FastAPI
-✔ Simulation
-✔ Docker
-✔ Unit Tests
-✔ CI Pipeline
-Streamlit Dashboard (in progress)
+---
 
-Phase 2 (Full Adaptive Risk Twin)
+## Contact
 
-⬜ Add Credit Model
-⬜ Add Liquidity Forecasting Model
-⬜ Add Operational Risk Rules
-⬜ Multi-Agent Coordination Layer
-⬜ Risk Knowledge Graph
-⬜ Real-time Streaming (Kafka)
-⬜ Enterprise Dashboard (Plotly/Streamlit Pro)
-
-Contact
-
-Moras Kashyap
-Machine Learning & Data Science
-Ireland
-🔗 LinkedIn: (https://www.linkedin.com/in/moras-kashyap/)
-🔗 GitHub: https://github.com/moras11
+**Moras Kashyap**  
+Machine Learning & Data Science  
+GitHub: https://github.com/moras11  
+LinkedIn: https://www.linkedin.com/in/moras-kashyap/
