@@ -13,7 +13,7 @@ Phase 1 delivers a production-ready Fraud Detection & Simulation engine.
 Below is a high-level architecture of the Training Layer and Serving Layer.
 
 <p align="center">
-  <img src="assets/system_architecture.png" width="550">
+  <img src="assets/system_architecture.png" width="250">
 </p>
 
 ---
