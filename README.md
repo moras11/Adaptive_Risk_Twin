@@ -7,11 +7,14 @@ Phase 1 delivers a production-ready Fraud Detection & Simulation engine.
 
 ---
 
+
 ## System Architecture
 
-Below is a high-level architecture overview of the training and serving layers.
+Below is a high-level architecture of the Training Layer and Serving Layer.
 
-![System Architecture](Adaptive_Risk_Twin_Flowchart.png)
+<p align="center">
+  <img src="assets/system_architecture.png" width="550">
+</p>
 
 ---
 
