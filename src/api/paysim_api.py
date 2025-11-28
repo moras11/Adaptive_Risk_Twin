@@ -1,249 +1,245 @@
-"""
-FastAPI service for PaySim fraud detection (Adaptive Risk Twin – Fraud Module)
-
-Endpoints:
-- GET /health         : health check
-- POST /predict_fraud : predict fraud probability for a single transaction (raw input)
-"""
+# ============================================================
+# Adaptive Risk Twin – Fraud Detection API (FINAL VERSION)
+# Includes:
+#   ✔ Prediction
+#   ✔ Simulation
+#   ✔ SHAP Explainability
+#   ✔ 15-feature alignment to training dataset
+# ============================================================
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
+import shap
 import os
 
-
-# ---------------------------------------------------
-# 1. FastAPI app
-# ---------------------------------------------------
-
-app = FastAPI(
-    title="Adaptive Risk Twin – Fraud API",
-    description="Fraud prediction service built on PaySim + LightGBM",
-    version="0.1.0",
-)
-
-# ---------------------------------------------------
-# 2. Load model + feature schema at startup
-# ---------------------------------------------------
-
-# Detect CI mode (GitHub Actions)
+# ---------------------- CONFIG ----------------------
+MODEL_PATH = "models/lgbm_fraud.txt"
 CI_MODE = os.getenv("CI", "false").lower() == "true"
-# CI_MODE = True
-# skip model loading
-# skip CSV loading
-# tests run without errors
-# CI passes
 
 model = None
-ALL_COLUMNS = None
+explainer = None
 
+# EXACT 15 FEATURES USED DURING TRAINING
+ALL_COLUMNS = [
+    "amount",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "newbalanceDest",
+    "step",
+    "balance_drop_ratio_orig",
+    "balance_jump_ratio_dest",
+    "zero_to_zero_dest",
+    "unchanged_orig_balance",
+    "type_CASH_IN",
+    "type_CASH_OUT",
+    "type_DEBIT",
+    "type_PAYMENT",
+    "type_TRANSFER"
+]
 
+# ---------------------- CREATE APP ----------------------
+app = FastAPI(
+    title="Adaptive Risk Twin – Fraud API",
+    description="Fraud prediction + simulation + explainability",
+    version="1.0.0"
+)
+
+# ---------------------- LOAD MODEL ----------------------
 def load_dependencies():
-    global model, ALL_COLUMNS
+    global model, explainer
 
-    # -----------------------------------------------------
-    #  CI MODE → Do NOT load model or CSV (files not present)
-    # -----------------------------------------------------
     if CI_MODE:
-        print("CI mode enabled — skipping model & schema loading.")
-
-        # Minimal mock feature set so tests don't break
-        ALL_COLUMNS = [
-            "amount",
-            "oldbalanceOrg",
-            "newbalanceOrig",
-            "oldbalanceDest",
-            "newbalanceDest",
-            "step",
-            "type_TRANSFER",
-            "type_CASH_OUT",
-            "jump_ratio",
-            "origin_balance_diff",
-            "dest_balance_diff",
-        ]
-        model = None
+        print("CI MODE ENABLED — skipping model loading.")
         return
 
-    # -----------------------------------------------------
-    #  NORMAL MODE → Load real model & schema
-    # -----------------------------------------------------
+    # Load model
     print(f"Loading model from: {MODEL_PATH}")
     model = lgb.Booster(model_file=MODEL_PATH)
 
-    print(f"Loading feature schema from: {SCHEMA_PATH}")
-    schema_df = pd.read_csv(SCHEMA_PATH)
-    ALL_COLUMNS = [c for c in schema_df.columns if c != "isFraud"]
+    # SHAP Explainer
+    print("Initializing SHAP TreeExplainer…")
+    explainer = shap.TreeExplainer(model)
+
+    print("Loaded schema columns:", ALL_COLUMNS)
+    print("SHAP explainer ready.")
 
 
-# ---------------------------------------------------
-# 3. Pydantic request/response models
-# ---------------------------------------------------
-
-
+# ---------------------- INPUT MODELS ----------------------
 class TransactionInput(BaseModel):
-    amount: float = Field(..., example=50000)
-    type: str = Field(..., example="TRANSFER")
-    oldbalanceOrg: float = Field(..., example=100000)
-    newbalanceOrig: float = Field(..., example=50000)
-    oldbalanceDest: float = Field(..., example=0)
-    newbalanceDest: float = Field(..., example=50000)
-    step: int = Field(..., example=245)
+    amount: float
+    type: str
+    oldbalanceOrg: float
+    newbalanceOrig: float
+    oldbalanceDest: float
+    newbalanceDest: float
+    step: int
+
+
+class SimulationInput(BaseModel):
+    transaction: TransactionInput
+    amount_shock_percent: float = 0
+    force_type: str | None = None
+
+
+class SHAPInput(BaseModel):
+    amount: float
+    type: str
+    oldbalanceOrg: float
+    newbalanceOrig: float
+    oldbalanceDest: float
+    newbalanceDest: float
+    step: int
 
 
 class FraudPrediction(BaseModel):
     fraud_probability: float
     is_fraud: bool
-    threshold: float = 0.5
+    threshold: float
     message: str
 
 
-# ---------------------------------------------------
-# 4. Helper: build model-ready dataframe from raw input
-# ---------------------------------------------------
-
-
+# ---------------------- FEATURE BUILDING ----------------------
 def build_feature_row(tx: TransactionInput) -> pd.DataFrame:
-    """
-    Convert raw transaction input into a single-row DataFrame
-    with all engineered features and one-hot encoded type,
-    aligned to training schema (ALL_COLUMNS).
-    """
-    # 4.1 raw base fields
-    row = {
+
+    df = pd.DataFrame([{
         "amount": tx.amount,
         "oldbalanceOrg": tx.oldbalanceOrg,
         "newbalanceOrig": tx.newbalanceOrig,
         "oldbalanceDest": tx.oldbalanceDest,
         "newbalanceDest": tx.newbalanceDest,
         "step": tx.step,
-        "type": tx.type.upper(),  # normalize
-    }
+        "type": tx.type.upper()
+    }])
 
-    df = pd.DataFrame([row])
+    # EXACT engineered features used during training
+    df["balance_drop_ratio_orig"] = (
+        (df["oldbalanceOrg"] - df["newbalanceOrig"]) / (df["oldbalanceOrg"] + 1)
+    )
 
-    # 4.2 engineered fraud signatures (same logic as training)
-    df["balance_drop_orig"] = df["oldbalanceOrg"] - df["newbalanceOrig"]
-    df["balance_drop_ratio_orig"] = df["balance_drop_orig"] / (df["oldbalanceOrg"] + 1)
-
-    df["balance_jump_dest"] = df["newbalanceDest"] - df["oldbalanceDest"]
-    df["balance_jump_ratio_dest"] = df["balance_jump_dest"] / (df["oldbalanceDest"] + 1)
+    df["balance_jump_ratio_dest"] = (
+        (df["newbalanceDest"] - df["oldbalanceDest"]) / (df["oldbalanceDest"] + 1)
+    )
 
     df["zero_to_zero_dest"] = (
-        (df["oldbalanceDest"] == 0) & (df["newbalanceDest"] == 0) & (df["amount"] > 0)
+        (df["oldbalanceDest"] == 0) &
+        (df["newbalanceDest"] == 0) &
+        (df["amount"] > 0)
     ).astype(int)
 
     df["unchanged_orig_balance"] = (
-        (df["oldbalanceOrg"] == df["newbalanceOrig"]) & (df["amount"] > 0)
+        (df["oldbalanceOrg"] == df["newbalanceOrig"]) &
+        (df["amount"] > 0)
     ).astype(int)
 
-    # 4.3 one-hot encode type
+    # One-hot encode TYPE
     df = pd.get_dummies(df, columns=["type"], prefix="type", drop_first=False)
 
-    # 4.4 align with training feature columns
-    #    Any missing columns -> 0, any extra -> dropped
+    # Ensure all required columns exist
     for col in ALL_COLUMNS:
         if col not in df.columns:
             df[col] = 0
 
-    # keep only training columns, in correct order
+    # Ensure correct order
     df = df[ALL_COLUMNS]
 
-    # replace inf/nan (consistent with training)
+    # Clean
     df.replace([np.inf, -np.inf], 0, inplace=True)
     df.fillna(0, inplace=True)
 
     return df
 
 
-# ---------------------------------------------------
-# 5. Endpoints
-# ---------------------------------------------------
-
-
+# ---------------------- ENDPOINT: HEALTH ----------------------
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "model_loaded": True, "features": len(ALL_COLUMNS)}
+    return {
+        "status": "ok",
+        "model_loaded": model is not None,
+        "features": len(ALL_COLUMNS)
+    }
 
 
+# ---------------------- ENDPOINT: PREDICT ----------------------
 @app.post("/predict_fraud", response_model=FraudPrediction)
 def predict_fraud(tx: TransactionInput):
-    """
-    Predict fraud probability for a single transaction.
-    """
-    # build feature row
+
     X = build_feature_row(tx)
 
-    # 2. Predict
     if CI_MODE:
-        # In CI: return a fake probability so tests don't depend on real model
-        prob = 0.12345
+        prob = 0.1234
     else:
-        # Normal mode: use real model
         prob = float(model.predict(X)[0])
 
-    threshold = 0.5  # you can tune this later
+    threshold = 0.5
     is_fraud = prob >= threshold
-
-    if is_fraud:
-        msg = "High fraud risk – transaction should be flagged/reviewed."
-    else:
-        msg = "Low fraud risk – transaction appears normal."
+    msg = "High fraud risk" if is_fraud else "Low fraud risk"
 
     return FraudPrediction(
         fraud_probability=prob,
         is_fraud=is_fraud,
         threshold=threshold,
-        message=msg,
+        message=msg
     )
 
 
-from typing import Optional
+# ---------------------- ENDPOINT: SIMULATION ----------------------
+@app.post("/simulate")
+def simulate(sim: SimulationInput):
 
-
-class SimulationInput(BaseModel):
-    transaction: TransactionInput
-    amount_shock_percent: Optional[float] = Field(0, example=20)
-    force_type: Optional[str] = Field(None, example="CASH_OUT")
-
-
-@app.post("/simulate", response_model=dict)
-def simulate_risk(sim: SimulationInput):
-    """
-    Run a simple risk simulation:
-    - get baseline fraud probability
-    - apply shocks (amount %, type override)
-    - recompute fraud probability
-    - return delta
-    """
-    # ---- 1) BASELINE ----
+    # Baseline prediction
     baseline_X = build_feature_row(sim.transaction)
     baseline_prob = float(model.predict(baseline_X)[0])
 
-    # ---- 2) APPLY SHOCKS ----
+    # Shocked transaction
     shocked_tx = sim.transaction.model_copy()
 
-    # amount shock
+    # Apply amount shock
     shocked_tx.amount = shocked_tx.amount * (1 + sim.amount_shock_percent / 100)
 
-    # type override
-    if sim.force_type is not None:
-        shocked_tx.type = sim.force_type.upper()
+    # Optional forced type
+    if sim.force_type:
+        shocked_tx.type = sim.force_type
 
-    # ---- 3) SIMULATED ----
-    sim_X = build_feature_row(shocked_tx)
-    simulated_prob = float(model.predict(sim_X)[0])
-
-    # ---- 4) DELTA ----
-    delta = simulated_prob - baseline_prob
+    # Predict simulated
+    shock_X = build_feature_row(shocked_tx)
+    shock_prob = float(model.predict(shock_X)[0])
 
     return {
         "baseline_fraud_probability": baseline_prob,
-        "simulated_fraud_probability": simulated_prob,
-        "delta": delta,
+        "simulated_fraud_probability": shock_prob,
+        "delta": shock_prob - baseline_prob,
+        "applied_shock_percent": sim.amount_shock_percent,
+        "forced_type": sim.force_type
     }
 
 
-# Load dependencies ALWAYS, but behavior differs in CI_MODE
+# ---------------------- ENDPOINT: SHAP ----------------------
+@app.post("/explain_shap")
+def explain_shap(tx: SHAPInput):
+
+    X = build_feature_row(tx)
+
+    # Prediction
+    prob = float(model.predict(X)[0])
+
+    # SHAP values
+    shap_vals = explainer.shap_values(X)[0].tolist()
+
+    contributions = list(zip(ALL_COLUMNS, shap_vals))
+    contributions_sorted = sorted(contributions, key=lambda x: abs(x[1]), reverse=True)
+
+    return {
+        "fraud_probability": prob,
+        "base_value": explainer.expected_value,
+        "shap_values": shap_vals,
+        "feature_names": ALL_COLUMNS,
+        "top_features": contributions_sorted[:10]
+    }
+
+
+# ---------------------- INITIALIZE ----------------------
 load_dependencies()
