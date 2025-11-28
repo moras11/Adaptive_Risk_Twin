@@ -9,3 +9,6 @@ scikit-learn
 joblib
 python-multipart
 pydantic
+
+streamlit
+requests
